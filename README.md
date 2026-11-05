@@ -24,6 +24,25 @@ systems.
 - A persistent personal assistant with long-term memory or a background daemon.
 - An operating-system sandbox. Run untrusted work inside a container.
 
+## Development
+
+See [CONTRIBUTING.md](CONTRIBUTING.md) for setup and the checks to run before a
+pull request.
+
+CI runs on every pull request: lint and policy checks, build/clippy/test on
+Linux, Windows and macOS (x86_64 and arm64), and static musl builds for Linux.
+
+**CI duration baseline** (empty workspace, 2026-11-06; wall time of the whole
+run, all jobs in parallel):
+
+| Cache | Wall time | Slowest job |
+|---|---|---|
+| Cold | 72 s | `macos-15-intel`, 67 s |
+| Warm | 68 s | `windows-11-arm`, 62 s |
+
+At this stage, installing the toolchain accounts for most of each job. The
+numbers will be revisited as real code lands.
+
 ## License
 
 Licensed under either of
