@@ -1,0 +1,16 @@
+[package]
+name = "nty-ui"
+description = "Inline terminal UI for nty"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+publish.workspace = true
+
+[dependencies]
+nty-proto.workspace = true
+nty-core.workspace = true
+
+[lints]
+workspace = true

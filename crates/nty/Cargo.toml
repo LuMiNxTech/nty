@@ -1,0 +1,28 @@
+[package]
+name = "nty"
+description = "nty — a lightweight, always-at-hand AI agent"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+publish.workspace = true
+
+[features]
+default = ["serve"]
+serve = ["nty-server/serve"]
+otel = ["nty-core/otel"]
+wasm = ["nty-ext/wasm"]
+full = ["serve", "otel", "wasm"]
+
+[dependencies]
+nty-proto.workspace = true
+nty-core.workspace = true
+nty-providers.workspace = true
+nty-tools.workspace = true
+nty-ext.workspace = true
+nty-ui.workspace = true
+nty-server.workspace = true
+
+[lints]
+workspace = true

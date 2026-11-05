@@ -1,0 +1,19 @@
+[package]
+name = "nty-server"
+description = "Headless front-ends for nty: rpc, serve (HTTP/SSE), MCP server"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+publish.workspace = true
+
+[features]
+serve = []
+
+[dependencies]
+nty-proto.workspace = true
+nty-core.workspace = true
+
+[lints]
+workspace = true

@@ -1,0 +1,3 @@
+[alias]
+# `nty-full`: the build with every optional feature enabled (serve + otel + wasm).
+build-full = "build --release -p nty --features full"

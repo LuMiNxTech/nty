@@ -1,0 +1,14 @@
+[package]
+name = "nty-proto"
+description = "Wire protocol types and JSON Schemas for nty (events, commands, RPC, hooks, plugins)"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+publish.workspace = true
+
+[dependencies]
+
+[lints]
+workspace = true

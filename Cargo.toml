@@ -1,0 +1,39 @@
+[workspace]
+resolver = "3"
+members = ["crates/*"]
+
+[workspace.package]
+version = "0.0.0"
+edition = "2024"
+rust-version = "1.99"
+license = "MIT OR Apache-2.0"
+repository = "https://github.com/LuMiNxTech/nty"
+publish = false
+
+[workspace.dependencies]
+nty-proto = { path = "crates/nty-proto" }
+nty-core = { path = "crates/nty-core" }
+nty-providers = { path = "crates/nty-providers" }
+nty-tools = { path = "crates/nty-tools" }
+nty-ext = { path = "crates/nty-ext" }
+nty-ui = { path = "crates/nty-ui" }
+nty-server = { path = "crates/nty-server" }
+
+[profile.release]
+lto = "fat"
+codegen-units = 1
+strip = true
+opt-level = 3
+# Unwind (not abort): panics inside a tool, plugin host or connection task are
+# contained at task boundaries so a single failure does not kill the session.
+panic = "unwind"
+
+[workspace.lints.rust]
+unsafe_op_in_unsafe_fn = "deny"
+missing_debug_implementations = "warn"
+
+[workspace.lints.clippy]
+dbg_macro = "deny"
+todo = "deny"
+print_stdout = "warn"
+print_stderr = "warn"
