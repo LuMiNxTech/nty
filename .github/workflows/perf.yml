@@ -1,0 +1,139 @@
+name: Perf
+
+# Performance gates: binary size, startup time, time to interactive prompt and
+# idle memory, checked against fixed budgets and against the base branch.
+#
+# On pull requests the base commit is built and measured in the same job, on
+# the same runner, so that the baseline and the head see identical hardware.
+# The two binaries are measured in alternating (ABBA) rounds to cancel drift.
+on:
+  push:
+    branches: [main]
+  pull_request:
+    types: [opened, synchronize, reopened, labeled]
+  schedule:
+    - cron: "41 4 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: perf-${{ github.event.pull_request.number || github.ref }}-${{ github.event_name }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+env:
+  CARGO_TERM_COLOR: always
+  CARGO_INCREMENTAL: 0
+
+jobs:
+  gate:
+    name: Perf gate (${{ matrix.os }})
+    if: github.event_name != 'schedule'
+    strategy:
+      fail-fast: false
+      matrix:
+        os:
+          - ubuntu-24.04
+          - ubuntu-24.04-arm
+          - windows-latest
+          - windows-11-arm
+          - macos-15
+          - macos-15-intel
+    runs-on: ${{ matrix.os }}
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+      - uses: actions-rust-lang/setup-rust-toolchain@a188e68d0fd2bd36ad51dccb2b07ba6e75105f30 # v2.0.1
+      - name: Install hyperfine
+        run: |
+          scripts/perf/install-hyperfine.sh "$RUNNER_TEMP/bin"
+          echo "$RUNNER_TEMP/bin" >> "$GITHUB_PATH"
+      - name: Environment
+        run: |
+          if [ "$RUNNER_OS" = Windows ]; then echo "EXE=.exe" >> "$GITHUB_ENV"; fi
+          if command -v python3 >/dev/null; then echo "PY=python3" >> "$GITHUB_ENV"; else echo "PY=python" >> "$GITHUB_ENV"; fi
+      - name: Build head
+        run: |
+          cargo build --release -p nty --locked
+          mkdir -p "$RUNNER_TEMP/head"
+          cp "target/release/nty$EXE" "$RUNNER_TEMP/head/"
+      - name: Build base
+        if: github.event_name == 'pull_request'
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+        run: |
+          git worktree add --detach "$RUNNER_TEMP/base-src" "$BASE_SHA"
+          # Share the target directory so dependencies are not rebuilt.
+          cargo build --release -p nty --locked \
+            --manifest-path "$RUNNER_TEMP/base-src/Cargo.toml" \
+            --target-dir "$GITHUB_WORKSPACE/target"
+          mkdir -p "$RUNNER_TEMP/base"
+          cp "target/release/nty$EXE" "$RUNNER_TEMP/base/"
+      - name: Measure base and head (interleaved)
+        if: github.event_name == 'pull_request'
+        run: |
+          $PY scripts/perf/perf.py ab \
+            --base-bin "$RUNNER_TEMP/base/nty$EXE" --head-bin "$RUNNER_TEMP/head/nty$EXE" \
+            --base-out "$RUNNER_TEMP/base.json" --head-out "$RUNNER_TEMP/head.json"
+      - name: Measure head
+        if: github.event_name != 'pull_request'
+        run: $PY scripts/perf/perf.py measure --bin "$RUNNER_TEMP/head/nty$EXE" --out "$RUNNER_TEMP/head.json"
+      - name: Gate
+        env:
+          TITLE: Perf gate (${{ matrix.os }})
+        run: |
+          base=()
+          if [ -f "$RUNNER_TEMP/base.json" ]; then base=(--base "$RUNNER_TEMP/base.json"); fi
+          $PY scripts/perf/perf.py compare --head "$RUNNER_TEMP/head.json" "${base[@]}" --title "$TITLE"
+      - name: Upload results
+        if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: perf-${{ matrix.os }}
+          path: ${{ runner.temp }}/*.json
+          if-no-files-found: ignore
+
+  noise:
+    name: Perf noise (${{ matrix.os }})
+    # Nightly, on demand, or on a pull request labelled `perf-noise`.
+    if: >-
+      github.event_name == 'schedule' || github.event_name == 'workflow_dispatch' ||
+      contains(github.event.pull_request.labels.*.name, 'perf-noise')
+    strategy:
+      fail-fast: false
+      matrix:
+        os:
+          - ubuntu-24.04
+          - ubuntu-24.04-arm
+          - windows-latest
+          - windows-11-arm
+          - macos-15
+          - macos-15-intel
+    runs-on: ${{ matrix.os }}
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions-rust-lang/setup-rust-toolchain@a188e68d0fd2bd36ad51dccb2b07ba6e75105f30 # v2.0.1
+      - name: Install hyperfine
+        run: |
+          scripts/perf/install-hyperfine.sh "$RUNNER_TEMP/bin"
+          echo "$RUNNER_TEMP/bin" >> "$GITHUB_PATH"
+      - name: Build
+        run: cargo build --release -p nty --locked
+      - name: Measure 10 times
+        run: |
+          EXE=""; if [ "$RUNNER_OS" = Windows ]; then EXE=.exe; fi
+          PY=python3; command -v python3 >/dev/null || PY=python
+          $PY scripts/perf/perf.py noise --repeat 10 --bin "target/release/nty$EXE" --out "$RUNNER_TEMP/noise.json"
+      - name: Upload results
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: perf-noise-${{ matrix.os }}
+          path: ${{ runner.temp }}/noise.json

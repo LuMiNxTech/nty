@@ -48,3 +48,22 @@ Optional capabilities belong behind cargo features (`serve`, `otel`, `wasm`).
 
 By contributing, you agree that your contributions are dual-licensed under
 MIT OR Apache-2.0, as described in the README.
+
+## Performance gates
+
+`.github/workflows/perf.yml` measures every pull request on all six CI
+platforms. It builds the base commit and the head in the same job, measures
+both with `scripts/perf/perf.py`, and fails when a metric exceeds its budget or
+regresses by more than 10% against the base. Results appear in the job summary.
+
+To measure locally, install [hyperfine](https://github.com/sharkdp/hyperfine)
+2.x and run:
+
+```sh
+cargo build --release -p nty
+python3 scripts/perf/perf.py measure --bin target/release/nty
+python3 scripts/perf/perf.py noise --bin target/release/nty --repeat 10
+```
+
+Label a pull request `perf-noise` to also run the repeated-measurement noise
+job in CI.
