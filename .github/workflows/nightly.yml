@@ -1,0 +1,24 @@
+name: Nightly
+
+# Scheduled long-running jobs (fuzzing, soak and long end-to-end tests are
+# added here as they land). Can also be started by hand.
+on:
+  schedule:
+    - cron: "17 3 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  long-tests:
+    name: Long tests (placeholder)
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions-rust-lang/setup-rust-toolchain@a188e68d0fd2bd36ad51dccb2b07ba6e75105f30 # v2.0.1
+      - name: Full test suite, including ignored tests
+        run: cargo test --workspace --all-features --locked -- --include-ignored
