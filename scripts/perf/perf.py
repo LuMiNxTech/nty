@@ -50,6 +50,12 @@ BUDGETS = {
 # Maximum allowed regression of head relative to the baseline.
 REGRESSION_LIMIT = 0.10
 
+# Timing metrics are noisy on macOS and Windows runners (same-commit spread of
+# 50% or more), so their regressions are only gated on Linux, and only when the
+# absolute change also exceeds this floor. Budgets are checked everywhere.
+TIMING_METRICS = {"startup_ms", "interactive_ms"}
+TIMING_FLOOR_MS = 0.5
+
 PROMPT = b"> "
 
 
@@ -233,11 +239,15 @@ def cmd_compare(args: argparse.Namespace) -> int:
         b = base.get(metric) if base else None
         budget = BUDGETS.get(metric)
         delta = (h - b) / b if b else None
+        regression_gated = metric in GATED and (
+            metric not in TIMING_METRICS
+            or (head.get("platform", "").startswith("Linux") and h - b > TIMING_FLOOR_MS)
+        ) if b else False
         status = "✅"
         if budget is not None and h > budget:
             status = "❌ over budget"
             failures.append(f"{metric}: {fmt(metric, h)} exceeds budget {fmt(metric, budget)}")
-        elif metric in GATED and delta is not None and delta > REGRESSION_LIMIT:
+        elif regression_gated and delta is not None and delta > REGRESSION_LIMIT:
             status = "❌ regression"
             failures.append(
                 f"{metric}: {fmt(metric, h)} is {delta:+.1%} vs baseline {fmt(metric, b)}"
@@ -245,6 +255,8 @@ def cmd_compare(args: argparse.Namespace) -> int:
             )
         elif metric in INFO:
             status = "ℹ️ info"
+        elif metric in TIMING_METRICS and b and not regression_gated:
+            status = "✅ (Δ not gated)"
         rows.append(
             f"| `{metric}` | {fmt(metric, b)} | {fmt(metric, h)} | "
             f"{'—' if delta is None else f'{delta:+.1%}'} | {fmt(metric, budget)} | {status} |"

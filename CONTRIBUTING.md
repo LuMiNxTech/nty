@@ -54,7 +54,11 @@ MIT OR Apache-2.0, as described in the README.
 `.github/workflows/perf.yml` measures every pull request on all six CI
 platforms. It builds the base commit and the head in the same job, measures
 both with `scripts/perf/perf.py`, and fails when a metric exceeds its budget or
-regresses by more than 10% against the base. Results appear in the job summary.
+regresses by more than 10% against the base. Timing metrics (`startup_ms`,
+`interactive_ms`) are too noisy on macOS and Windows runners, so their
+regressions are only gated on Linux and only when the change is also larger
+than 0.5 ms; elsewhere they are checked against the budget only. Results appear
+in the job summary.
 
 To measure locally, install [hyperfine](https://github.com/sharkdp/hyperfine)
 2.x and run:

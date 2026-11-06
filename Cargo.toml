@@ -23,7 +23,7 @@ nty-server = { path = "crates/nty-server" }
 lto = "fat"
 codegen-units = 1
 strip = true
-opt-level = 3
+opt-level = "s"
 # Unwind (not abort): panics inside a tool, plugin host or connection task are
 # contained at task boundaries so a single failure does not kill the session.
 panic = "unwind"
